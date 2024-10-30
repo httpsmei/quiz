@@ -1,0 +1,257 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Meis Quiz</title>
+    <style>
+        /* Hintergrund mit dunklem Gradient */
+        body {
+            font-family: Arial, sans-serif;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            margin: 0;
+            overflow: hidden;
+            background: linear-gradient(120deg, #333, #1c1c1c);
+            color: #fff;
+        }
+        /* Glas-Effekt für den Quiz-Container */
+        #quiz-container {
+            width: 90%;
+            max-width: 600px;
+            padding: 20px;
+            background: rgba(76, 76, 76, 0.7);
+            border-radius: 15px;
+            box-shadow: 0 4px 20px rgba(255, 255, 255, 0.2), 0 4px 15px rgba(0, 0, 0, 0.4);
+            backdrop-filter: blur(15px);
+            position: relative;
+            text-align: center;
+        }
+        /* Fortschrittsanzeige */
+        .progress-bar {
+            height: 8px;
+            background-color: #333;
+            border-radius: 5px;
+            overflow: hidden;
+            margin-bottom: 15px;
+        }
+        .progress {
+            height: 100%;
+            background: linear-gradient(90deg, #fbb4ec, #ffffff);
+            width: 0;
+            transition: width 0.5s, background-color 1.5s ease-in-out;
+        }
+        /* Countdown-Kreis */
+        .timer-circle {
+            width: 60px;
+            height: 60px;
+            border: 4px solid #f9d0e8;
+            border-radius: 50%;
+            position: relative;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            color: #f8beef;
+            font-size: 1rem;
+            font-weight: bold;
+            margin: 10px auto;
+            box-shadow: 0 0 15px 5px #ffb9e5;
+            animation: timerGlow 2s infinite alternate;
+        }
+        @keyframes timerGlow {
+            from { box-shadow: 0 0 15px 5px #ffb8ed; }
+            to { box-shadow: 0 0 20px 8px #bb8bb4; }
+        }
+        /* Neon-Button-Effekte */
+        .option {
+            background: rgba(59, 59, 59, 0.7);
+            padding: 12px;
+            margin: 8px 0;
+            border-radius: 12px;
+            cursor: pointer;
+            transition: all 0.5s ease;
+            color: #e0a1dd;
+            text-transform: uppercase;
+            font-weight: bold;
+            box-shadow: 0px 2px 5px rgba(0, 0, 0, 0.5);
+        }
+        .option:hover {
+            background: rgba(0, 0, 0, 0.4);
+            box-shadow: 0px 0px 8px 2px #f9d0e8;
+            color: #ffffff;
+        }
+        /* Ergebnisanzeige */
+        .result {
+            font-size: 1.8rem;
+            color: #f3a6d4;
+            display: none;
+            animation: resultPulse 1s infinite alternate;
+        }
+        @keyframes resultPulse {
+            from { transform: scale(1); }
+            to { transform: scale(1.15); }
+        }
+        /* Neustart Button */
+        .btn {
+            background-color: #f9b7e7;
+            color: #1d1d40;
+            padding: 12px 24px;
+            border: none;
+            cursor: pointer;
+            font-size: 1rem;
+            font-weight: bold;
+            border-radius: 8px;
+            transition: all 0.5s;
+            margin-top: 20px;
+            box-shadow: 0px 0px 12px #f1a7da;
+        }
+        .btn:hover {
+            background-color: #fbfbfb;
+            color: #fff;
+            box-shadow: 0px 0px 15px #ffffff;
+        }
+    </style>
+</head>
+<body>
+    <div id="quiz-container">
+        <div class="progress-bar">
+            <div id="progress" class="progress"></div>
+        </div>
+        
+        <!-- Timer in Kreisform -->
+        <div class="timer-circle" id="timer">10</div>
+
+        <!-- Quiz Question Section -->
+        <div id="question-container">
+            <h2 class="question" id="question-text"></h2>
+            <div id="option-container"></div>
+        </div>
+
+        <!-- Result Section -->
+        <div id="result" class="result"></div>
+        <button id="restart-button" class="btn" onclick="restartQuiz()" style="display:none;">Neustart</button>
+    </div>
+
+    <script>
+        const quizData = [
+            { question: "Wie viel Prozent der Lebensmittel weltweit werden verschwendet?", options: ["10%", "20%", "30%", "40%"], answer: "30%" },
+            { question: "Welches Land hat das meiste Essen im Überfluss?", options: ["USA", "China", "Deutschland", "Indien"], answer: "USA" },
+            { question: "Wie viel Prozent der Weltbevölkerung leidet unter Hunger?", options: ["5%", "10%", "15%", "20%"], answer: "10%" },
+            { question: "Welche Maßnahme reduziert Lebensmittelverschwendung am effektivsten?", options: ["Essen planvoll kaufen", "Mehr Werbung für Essen", "Lebensmittel teurer machen", "Mindesthaltbarkeitsdatum ignorieren"], answer: "Essen planvoll kaufen" }
+        ];
+
+        let currentQuestionIndex = 0;
+        let score = 0;
+        let timeRemaining = 10;
+        let timerInterval;
+
+        const questionText = document.getElementById("question-text");
+        const optionContainer = document.getElementById("option-container");
+        const progress = document.getElementById("progress");
+        const resultContainer = document.getElementById("result");
+        const restartButton = document.getElementById("restart-button");
+        const timerDisplay = document.getElementById("timer");
+
+        function startQuiz() {
+            resetTimer();
+            showQuestion();
+        }
+
+        function showQuestion() {
+            const currentQuestion = quizData[currentQuestionIndex];
+            questionText.innerText = currentQuestion.question;
+            optionContainer.innerHTML = "";
+            timeRemaining = 20;
+            updateTimer();
+            timerInterval = setInterval(countdown, 1000);
+
+            currentQuestion.options.forEach(option => {
+                const optionButton = document.createElement("div");
+                optionButton.classList.add("option");
+                optionButton.innerText = option;
+                optionButton.onclick = () => selectAnswer(option);
+                optionContainer.appendChild(optionButton);
+            });
+
+            updateProgress();
+        }
+
+        function selectAnswer(selectedOption) {
+            clearInterval(timerInterval);
+            const currentQuestion = quizData[currentQuestionIndex];
+
+            if (selectedOption === currentQuestion.answer) {
+                score += timeRemaining;
+                showFeedback("Richtig!", "green");
+            } else {
+                showFeedback("Falsch!", "red");
+            }
+
+            setTimeout(() => {
+                currentQuestionIndex++;
+                if (currentQuestionIndex < quizData.length) {
+                    resetTimer();
+                    showQuestion();
+                } else {
+                    showResult();
+                }
+            }, 1000);
+        }
+
+        function countdown() {
+            if (timeRemaining > 0) {
+                timeRemaining--;
+                updateTimer();
+            } else {
+                clearInterval(timerInterval);
+                selectAnswer(null);
+            }
+        }
+
+        function resetTimer() {
+            clearInterval(timerInterval);
+            timeRemaining = 15;
+            timerDisplay.innerText = timeRemaining;
+        }
+
+        function updateTimer() {
+            timerDisplay.innerText = timeRemaining;
+        }
+
+        function updateProgress() {
+            const progressPercentage = ((currentQuestionIndex + 1) / quizData.length) * 100;
+            progress.style.width = progressPercentage + "%";
+        }
+
+        function showFeedback(message, color) {
+            questionText.innerText = message;
+            questionText.style.color = color;
+            optionContainer.innerHTML = "";
+        }
+
+        function showResult() {
+            questionText.style.display = "none";
+            optionContainer.style.display = "none";
+            resultContainer.style.display = "block";
+            restartButton.style.display = "inline-block";
+            resultContainer.innerHTML = `Ergebnis: Du hast ${score} Punkte erreicht!`;
+        }
+
+        function restartQuiz() {
+            score = 0;
+            currentQuestionIndex = 0;
+            questionText.style.display = "block";
+            optionContainer.style.display = "block";
+            resultContainer.style.display = "none";
+            restartButton.style.display = "none";
+            progress.style.width = "0%";
+            startQuiz();
+        }
+
+        // Initialize quiz
+        startQuiz();
+    </script>
+</body>
+</html>
